@@ -41,6 +41,15 @@ struct tuple_displayer final{
 	}
 };
 
+enum class LTdata:std::size_t{
+	date,place,number,home_team,score,away_team,toto_result
+};
+template<class Enum>
+constexpr std::underlying_type_t<Enum> toUType(Enum enum_)noexcept
+{
+	return static_cast<std::underlying_type_t<Enum>>(enum_);
+}
+
 struct csv_consider final{
 	typedef std::tuple<
 				std::string,
@@ -70,26 +79,26 @@ struct csv_consider final{
 					}
 
 					std::string str;
-					typename std::tuple_element<0,csv_tuple>::type date;
-					typename std::tuple_element<1,csv_tuple>::type place;
-					typename std::tuple_element<2,csv_tuple>::type number=0;
-					typename std::tuple_element<3,csv_tuple>::type home_team;
-					typename std::tuple_element<4,csv_tuple>::type score;
-					typename std::tuple_element<5,csv_tuple>::type away_team;
-					typename std::tuple_element<6,csv_tuple>::type toto_result=0;
+					typename std::tuple_element<toUType(LTdata::date),csv_tuple>::type date;
+					typename std::tuple_element<toUType(LTdata::place),csv_tuple>::type place;
+					typename std::tuple_element<toUType(LTdata::number),csv_tuple>::type number=0;
+					typename std::tuple_element<toUType(LTdata::home_team),csv_tuple>::type home_team;
+					typename std::tuple_element<toUType(LTdata::score),csv_tuple>::type score;
+					typename std::tuple_element<toUType(LTdata::away_team),csv_tuple>::type away_team;
+					typename std::tuple_element<toUType(LTdata::toto_result),csv_tuple>::type toto_result=0;
 					
 					while(std::getline(ifs,str)){
 						std::string token;
 						std::istringstream stream(str);
 						for(std::size_t i=0; std::getline(stream,token,','); ++i){
 							switch(i){
-								case 0: date=csv_consider::str_deleter(token," "); break;
-								case 1: place=csv_consider::str_deleter(token," "); break;
-								case 2: std::sscanf(token.c_str(),"%ld",&number); break;
-								case 3: home_team=csv_consider::str_deleter(token," "); break;
-								case 4: score=csv_consider::str_deleter(token," "); break;
-								case 5: away_team=csv_consider::str_deleter(token," "); break;
-								case 6: std::sscanf(token.c_str(),"%d",&toto_result); break;
+								case toUType(LTdata::date): date=csv_consider::str_deleter(token," "); break;
+								case toUType(LTdata::place): place=csv_consider::str_deleter(token," "); break;
+								case toUType(LTdata::number): std::sscanf(token.c_str(),"%ld",&number); break;
+								case toUType(LTdata::home_team): home_team=csv_consider::str_deleter(token," "); break;
+								case toUType(LTdata::score): score=csv_consider::str_deleter(token," "); break;
+								case toUType(LTdata::away_team): away_team=csv_consider::str_deleter(token," "); break;
+								case toUType(LTdata::toto_result): std::sscanf(token.c_str(),"%d",&toto_result); break;
 							};
 						}
 					}
@@ -132,7 +141,7 @@ public:
 		:team(a_team,"")
 	{
 		for(const csv_consider::csv_tuple& d_match:csv_cons){
-			if(std::get<3>(d_match)==a_team || std::get<5>(d_match)==a_team){
+			if(std::get<toUType(LTdata::home_team)>(d_match)==a_team || std::get<toUType(LTdata::away_team)>(d_match)==a_team){
 				result.emplace_back(d_match);
 			}
 		}
@@ -148,8 +157,10 @@ public:
 
 		for(const csv_consider::csv_tuple& d_match:csv_cons){
 			for(const csv_consider::csv_tuple& d:csv_cons){
-				if( (std::get<3>(d_match)==std::get<3>(d) && std::get<5>(d_match)==std::get<5>(d)) ||
-					(std::get<3>(d_match)==std::get<5>(d) && std::get<5>(d_match)==std::get<3>(d)) ){
+				if( (std::get<toUType(LTdata::home_team)>(d_match)==std::get<toUType(LTdata::home_team)>(d) && 
+							std::get<toUType(LTdata::away_team)>(d_match)==std::get<toUType(LTdata::away_team)>(d)) ||
+					(std::get<toUType(LTdata::home_team)>(d_match)==std::get<toUType(LTdata::away_team)>(d) && 
+					 std::get<toUType(LTdata::away_team)>(d_match)==std::get<toUType(LTdata::home_team)>(d)) ){
 						samemuch[index].emplace_back(d);
 				}
 			}
@@ -157,8 +168,8 @@ public:
 		}
 
 		for(const auto& much:samemuch){
-			if((std::get<3>(much[0])==home && std::get<5>(much[0])==away) ||
-				(std::get<3>(much[0])==away && std::get<5>(much[0])==home)){
+			if((std::get<toUType(LTdata::home_team)>(much[0])==home && std::get<toUType(LTdata::away_team)>(much[0])==away) ||
+				(std::get<toUType(LTdata::home_team)>(much[0])==away && std::get<toUType(LTdata::away_team)>(much[0])==home)){
 				std::copy(std::begin(much),std::end(much),std::back_inserter(result));
 				break;
 			}
@@ -178,7 +189,8 @@ public:
 			std::size_t win=0;
 
 			for(const csv_consider::csv_tuple& tp:result){
-				if((std::get<3>(tp)==team.first && std::get<6>(tp)==1) || (std::get<5>(tp)==team.first && std::get<6>(tp)==2)){
+				if((std::get<toUType(LTdata::home_team)>(tp)==team.first && std::get<toUType(LTdata::toto_result)>(tp)==1) ||
+					   	(std::get<toUType(LTdata::away_team)>(tp)==team.first && std::get<toUType(LTdata::toto_result)>(tp)==2)){
 					++win;
 				}
 			}
@@ -193,7 +205,7 @@ public:
 			boost::accumulators::accumulator_set<std::size_t,boost::accumulators::stats<boost::accumulators::tag::mean>> acc;
 			std::vector<std::size_t> toto_results(result.size());
 			std::size_t index=0;
-			for(const auto& r:result)toto_results[index++]=std::get<6>(r);
+			for(const auto& r:result)toto_results[index++]=std::get<toUType(LTdata::toto_result)>(r);
 			boost::for_each(std::move(toto_results),std::bind(std::ref(acc),std::placeholders::_1));
 			return boost::accumulators::extract::mean(acc);
 		}
